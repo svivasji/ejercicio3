@@ -1,0 +1,612 @@
+openapi: 3.0.3
+info:
+  title: Microservicio de Contenidos - Plataforma Musical
+  version: 1.0.0
+  description: API para la gestión de contenidos musicales, artistas, álbumes, canciones, playlists y valoraciones.
+
+servers:
+  - url: http://localhost:8080/api
+
+tags:
+  - name: Canciones
+  - name: Álbumes
+  - name: Playlists
+
+paths:
+  /canciones:
+    get:
+      tags: [Canciones]
+      summary: Listar canciones (catálogo)
+      description: Devuelve el catálogo de canciones, filtrable por género, artista, popularidad, etc.
+      parameters:
+        - in: query
+          name: genero
+          schema: { type: string }
+          description: Filtrar por género musical
+        - in: query
+          name: artista
+          schema: { type: string }
+          description: Filtrar por nombre de artista
+        - in: query
+          name: popularidad
+          schema: { type: string, enum: [top, tendencia, reciente] }
+          description: Ordenar por popularidad
+      responses:
+        '200':
+          description: Lista de canciones
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Cancion'
+
+    post:
+      tags: [Canciones]
+      summary: Subir nueva canción
+      description: Permite a un músico subir una nueva canción.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CancionInput'
+      responses:
+        '201':
+          description: Canción creada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Cancion'
+
+  /canciones/{id}:
+    get:
+      tags: [Canciones]
+      summary: Obtener detalles de una canción
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      responses:
+        '200':
+          description: Detalles de la canción
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Cancion'
+        '404':
+          description: Canción no encontrada
+    
+    put:
+      tags: [Canciones]
+      summary: Editar información de una canción
+      description: Solo el artista propietario puede editar su canción
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CancionUpdate'
+      responses:
+        '200':
+          description: Canción actualizada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Cancion'
+        '403':
+          description: No autorizado para editar esta canción
+        '404':
+          description: Canción no encontrada
+    
+    delete:
+      tags: [Canciones]
+      summary: Eliminar una canción
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      responses:
+        '204':
+          description: Canción eliminada
+        '403':
+          description: No autorizado para eliminar esta canción
+        '404':
+          description: Canción no encontrada
+
+  /canciones/{id}/stream:
+    get:
+      tags: [Canciones]
+      summary: Reproducir canción (streaming)
+      description: Permite reproducir una canción en streaming. Disponible para todos los usuarios registrados.
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      responses:
+        '200':
+          description: Audio en streaming
+          content:
+            audio/mpeg:
+              schema:
+                type: string
+                format: binary
+        '404':
+          description: Canción no encontrada
+
+  /canciones/{id}/descargar:
+    get:
+      tags: [Canciones]
+      summary: Descargar canción
+      description: Permite descargar una canción previamente comprada. Verifica en la tabla Compras si el usuario tiene acceso.
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+        - in: query
+          name: emailUser
+          required: true
+          schema: { type: string }
+          description: Email del usuario para verificar la compra
+      responses:
+        '200':
+          description: Archivo de audio descargable
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        '403':
+          description: Usuario no ha comprado esta canción
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Debes comprar esta canción para descargarla"
+        '404':
+          description: Canción no encontrada
+
+  /albumes:
+    get:
+      tags: [Álbumes]
+      summary: Listar álbumes
+      parameters:
+        - in: query
+          name: genero
+          schema: { type: string }
+          description: Filtrar por género musical
+        - in: query
+          name: artista
+          schema: { type: string }
+          description: Filtrar por nombre de artista
+      responses:
+        '200':
+          description: Lista de álbumes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Album'
+    
+    post:
+      tags: [Álbumes]
+      summary: Crear álbum
+      description: Permite a un músico crear un nuevo álbum
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AlbumInput'
+      responses:
+        '201':
+          description: Álbum creado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Album'
+
+  /albumes/{id}:
+    get:
+      tags: [Álbumes]
+      summary: Obtener detalles de un álbum
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      responses:
+        '200':
+          description: Detalles del álbum
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Album'
+        '404':
+          description: Álbum no encontrado
+    
+    put:
+      tags: [Álbumes]
+      summary: Editar álbum
+      description: Solo el artista propietario puede editar su álbum
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AlbumUpdate'
+      responses:
+        '200':
+          description: Álbum actualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Album'
+        '403':
+          description: No autorizado para editar este álbum
+        '404':
+          description: Álbum no encontrado
+
+  /albumes/{id}/descargar:
+    get:
+      tags: [Álbumes]
+      summary: Descargar álbum completo
+      description: Permite descargar un álbum completo previamente comprado. Verifica en la tabla Compras si el usuario tiene acceso.
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+        - in: query
+          name: emailUser
+          required: true
+          schema: { type: string }
+          description: Email del usuario para verificar la compra
+      responses:
+        '200':
+          description: Archivo ZIP con todas las canciones del álbum
+          content:
+            application/zip:
+              schema:
+                type: string
+                format: binary
+        '403':
+          description: Usuario no ha comprado este álbum
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Debes comprar este álbum para descargarlo"
+        '404':
+          description: Álbum no encontrado
+
+  /playlists:
+    get:
+      tags: [Playlists]
+      summary: Listar playlists públicas
+      responses:
+        '200':
+          description: Listado de playlists
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Playlist'
+    
+    post:
+      tags: [Playlists]
+      summary: Crear playlist
+      description: Permite a un usuario crear una nueva playlist personal
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PlaylistInput'
+      responses:
+        '201':
+          description: Playlist creada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Playlist'
+
+  /playlists/{id}:
+    get:
+      tags: [Playlists]
+      summary: Obtener detalles de una playlist
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      responses:
+        '200':
+          description: Detalles de la playlist
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Playlist'
+        '404':
+          description: Playlist no encontrada
+    
+    put:
+      tags: [Playlists]
+      summary: Editar playlist
+      description: Solo el propietario puede editar su playlist
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PlaylistUpdate'
+      responses:
+        '200':
+          description: Playlist actualizada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Playlist'
+        '403':
+          description: No autorizado para editar esta playlist
+        '404':
+          description: Playlist no encontrada
+
+
+
+components:
+  schemas:
+    Cancion:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: Identificador único de la canción
+        nomCancion:
+          type: string
+          description: Título de la canción
+        archivoMp3:
+          type: string
+          format: uri
+          description: URL del archivo de audio
+        imgPortada:
+          type: string
+          format: uri
+          description: URL de la imagen de portada
+        emailArtista:
+          type: array
+          items: { type: string }
+          description: Email(s) del/los artista(s)
+        genre:
+          type: array
+          items: { type: string }
+          description: Géneros musicales
+        date:
+          type: string
+          format: date
+          description: Fecha de publicación
+        precio:
+          type: number
+          format: float
+          description: Precio de la canción
+        numVisualizaciones:
+          type: integer
+          description: Número de reproducciones
+        numIngresos:
+          type: number
+          format: float
+          description: Ingresos generados
+        idAlbum:
+          type: integer
+          nullable: true
+          description: ID del álbum (si pertenece a uno)
+        numLikes:
+          type: integer
+          description: Número de likes/favoritos
+
+    CancionInput:
+      type: object
+      required: [nomCancion, archivoMp3, emailArtista, genre, date, precio]
+      properties:
+        nomCancion:
+          type: string
+        archivoMp3:
+          type: string
+          format: binary
+          description: Archivo de audio a subir
+        imgPortada:
+          type: string
+          format: binary
+          description: Imagen de portada (opcional)
+        emailArtista:
+          type: array
+          items: { type: string }
+        genre:
+          type: array
+          items: { type: string }
+        date:
+          type: string
+          format: date
+        precio:
+          type: number
+          format: float
+          minimum: 0
+        idAlbum:
+          type: integer
+          nullable: true
+
+    CancionUpdate:
+      type: object
+      description: Esquema para actualizar canciones (sin campos auto-generados)
+      properties:
+        nomCancion:
+          type: string
+        imgPortada:
+          type: string
+          format: uri
+        genre:
+          type: array
+          items: { type: string }
+        precio:
+          type: number
+          format: float
+          minimum: 0
+        idAlbum:
+          type: integer
+          nullable: true
+
+    Album:
+      type: object
+      properties:
+        id:
+          type: integer
+        nomAlbum:
+          type: string
+        idCanciones:
+          type: array
+          items: { type: integer }
+          description: IDs de las canciones del álbum
+        imgPortada:
+          type: string
+          format: uri
+        emailArtista:
+          type: array
+          items: { type: string }
+        genre:
+          type: array
+          items: { type: string }
+        date:
+          type: string
+          format: date
+        precio:
+          type: number
+          format: float
+        numVisualizaciones:
+          type: integer
+          description: Reproducciones totales del álbum
+        numIngresos:
+          type: number
+          format: float
+
+    AlbumInput:
+      type: object
+      required: [nomAlbum, idCanciones, emailArtista, genre, date, precio]
+      properties:
+        nomAlbum:
+          type: string
+        idCanciones:
+          type: array
+          items: { type: integer }
+        imgPortada:
+          type: string
+          format: binary
+        emailArtista:
+          type: array
+          items: { type: string }
+        genre:
+          type: array
+          items: { type: string }
+        date:
+          type: string
+          format: date
+        precio:
+          type: number
+          format: float
+          minimum: 0
+
+    AlbumUpdate:
+      type: object
+      description: Esquema para actualizar álbumes (sin campos auto-generados)
+      properties:
+        nomAlbum:
+          type: string
+        idCanciones:
+          type: array
+          items: { type: integer }
+        imgPortada:
+          type: string
+          format: uri
+        genre:
+          type: array
+          items: { type: string }
+        precio:
+          type: number
+          format: float
+          minimum: 0
+
+
+    Playlist:
+      type: object
+      properties:
+        id:
+          type: integer
+        emailUser:
+          type: string
+          description: Email del usuario propietario
+        nomPlaylist:
+          type: string
+        imgPortada:
+          type: string
+          format: uri
+        idCanciones:
+          type: array
+          items: { type: integer }
+        numVisualizaciones:
+          type: integer
+          description: Veces que se ha reproducido la playlist
+
+    PlaylistInput:
+      type: object
+      required: [emailUser, nomPlaylist, idCanciones]
+      properties:
+        emailUser:
+          type: string
+        nomPlaylist:
+          type: string
+        imgPortada:
+          type: string
+          format: binary
+        idCanciones:
+          type: array
+          items: { type: integer }
+
+    PlaylistUpdate:
+      type: object
+      description: Esquema para actualizar playlists (sin campos auto-generados)
+      properties:
+        nomPlaylist:
+          type: string
+        imgPortada:
+          type: string
+          format: uri
+        idCanciones:
+          type: array
+          items: { type: integer }
+
