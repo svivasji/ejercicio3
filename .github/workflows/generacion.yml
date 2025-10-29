@@ -1,0 +1,41 @@
+name: generacion # Nombre del workflow
+
+# 6. Se dispara con cada push a la rama main
+on:
+  push:
+    branches:
+      - main 
+
+jobs:
+  # 7. Define el job llamado generar-codigo
+  generar-codigo:
+    # 8. Se ejecuta en la última versión de Ubuntu
+    runs-on: ubuntu-latest 
+
+    steps:
+      # 9.1. Paso que utiliza actions/checkout@v4
+      - name: Descargar Código
+        uses: actions/checkout@v4 
+
+      # 9.2. Paso que configura Java 17 (Temurin)
+      - name: Configurar Java 17
+        uses: actions/setup-java@v3
+        with:
+            java-version: '17' # [cite: 68]
+            distribution: 'temurin' # [cite: 70]
+
+      # 9.3. Paso que ejecuta el generador
+      - name: Generar código Python-Flask
+        # Usamos el nombre de tu archivo YAML: MicroServicio-Contenidos.yaml
+        run: java -jar openapi-generator-cli.jar generate -i MicroServicio-Contenidos.yaml -g python-flask -o ./openapi_server 
+
+      # 9.4. Paso que comprime la salida
+      - name: Comprimir código generado
+        run: zip -r openapi_server.zip openapi_server # [cite: 74]
+
+      # 9.5. Paso que sube el artefacto
+      - name: Subir el fichero zip como artefacto
+        uses: actions/upload-artifact@v4 # [cite: 75]
+        with:
+          name: codigo-generado-python # Nombre que tendrá el zip descargable
+          path: openapi_server.zip # Ruta del archivo a subir
